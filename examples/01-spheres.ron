@@ -1,0 +1,22 @@
+Scene (
+    camera: Perspective(
+        fov: 50,
+        near: 0.1,
+        far: 2000,
+    ),
+    objects: [
+        Object(
+            surface: Sphere (
+                radius: 3,
+            ),
+            transform: Transform (
+                position: (0.0, 0.0, 10.0),
+                scale: (1.0, 1.0, 1.0),
+                rotation: (0.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (1.0, 0.0, 0.0, 1.0),
+            )
+        )
+    ]
+)
