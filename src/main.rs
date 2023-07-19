@@ -1,5 +1,8 @@
 mod app;
+mod pipeline;
+mod traits;
 mod types;
+mod uniforms;
 
 use app::State;
 use winit::{
