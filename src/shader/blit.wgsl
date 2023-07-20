@@ -15,10 +15,17 @@ fn vs_main(
     return out;
 }
 
+@group(0) @binding(0)
+var tex: texture_storage_2d<rgba32float, read>;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let x = in.vert_pos.x;
-    let y = in.vert_pos.y;
+    let dimension = textureDimensions(tex);
+    let tex_coords = vec2<u32>(
+        u32((in.vert_pos.x + 0.5) * f32(dimension.x)),
+        u32((in.vert_pos.y + 0.5) * f32(dimension.y)),
+    );
 
-    return vec4<f32>(x + 0.5f, y + 0.5f, 0.0, 1.0);
+    let color = textureLoad(tex, tex_coords);
+    return vec4<f32>(color.xyz, 1.0);
 }

@@ -24,6 +24,17 @@ impl ComputePipeline {
                     },
                     count: None,
                 },
+                // Render texture
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        format: wgpu::TextureFormat::Rgba32Float,
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
             ],
         });
 

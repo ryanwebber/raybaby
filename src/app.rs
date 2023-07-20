@@ -53,7 +53,7 @@ impl State {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     limits: wgpu::Limits::default(),
                     label: None,
                 },
@@ -180,10 +180,18 @@ impl State {
             let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Compute bind group"),
                 layout: &self.pipelines.compute.bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.pipeline_data.globals_buffer.as_entire_binding(),
-                }],
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.pipeline_data.globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(
+                            &self.pipeline_data.render_texture,
+                        ),
+                    },
+                ],
             });
 
             {
@@ -193,12 +201,7 @@ impl State {
 
                 compute_pass.set_pipeline(&self.pipelines.compute.pipeline);
                 compute_pass.set_bind_group(0, &bind_group, &[]);
-
-                compute_pass.dispatch_workgroups(
-                    (self.size.width + 31) / 32,
-                    (self.size.height + 32) / 32,
-                    1,
-                )
+                compute_pass.dispatch_workgroups(self.size.width, self.size.height, 1)
             }
         }
 
