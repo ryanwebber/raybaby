@@ -1,10 +1,9 @@
-use encase::UniformBuffer;
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     pipeline::{compute::ComputePipeline, render::RenderPipeline},
-    storage,
+    storage::{self, Storable},
 };
 
 const QUAD_VERTICIES: &[storage::Vertex] = &[
@@ -47,6 +46,8 @@ pub struct PipelineData {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     globals_buffer: wgpu::Buffer,
+    materials_buffer: wgpu::Buffer,
+    spheres_buffer: wgpu::Buffer,
     render_texture: wgpu::TextureView,
 }
 
@@ -130,22 +131,62 @@ impl State {
                 })
             },
             globals_buffer: {
-                let globals_uniform = storage::Globals {
-                    camera_view_projection: glam::f32::Mat4::IDENTITY,
-                };
-
-                let bytes = {
-                    let mut buffer = UniformBuffer::new(Vec::new());
-                    buffer
-                        .write(&globals_uniform)
-                        .expect("Unable to write globals");
-                    buffer.into_inner()
+                let globals_uniform = {
+                    let fov: f32 = 0.87;
+                    let focal_distance: f32 = 10.0;
+                    let aspect_ratio = (size.width as f32) / (size.height as f32);
+                    let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
+                    let plane_width = plane_height * aspect_ratio;
+                    storage::Globals {
+                        camera: storage::Camera {
+                            focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
+                            world_space_position: glam::f32::vec3(0.0, 0.0, 0.0),
+                            local_to_world_matrix: glam::f32::Mat4::from_euler(
+                                glam::EulerRot::XYZ,
+                                0.0,
+                                0.0,
+                                0.0,
+                            ),
+                        },
+                    }
                 };
 
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Globals buffer"),
-                    contents: &bytes,
+                    contents: &storage::Uniform(globals_uniform).into_bytes(),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                })
+            },
+            materials_buffer: {
+                let materials: &[storage::Material] = &[
+                    storage::Material {
+                        color: glam::f32::vec4(1.0, 0.0, 0.0, 1.0),
+                    },
+                    storage::Material {
+                        color: glam::f32::vec4(0.0, 1.0, 0.0, 1.0),
+                    },
+                    storage::Material {
+                        color: glam::f32::vec4(0.0, 0.0, 1.0, 1.0),
+                    },
+                ];
+
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Materials buffer"),
+                    contents: &storage::Buffer(&materials).into_bytes(),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+                })
+            },
+            spheres_buffer: {
+                let spheres: &[storage::Sphere] = &[storage::Sphere {
+                    position: glam::f32::vec3(0.0, 0.0, 10.0),
+                    radius: 5.0,
+                    material_id: 0,
+                }];
+
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Spheres buffer"),
+                    contents: &storage::Buffer(&spheres).into_bytes(),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
                 })
             },
             render_texture: {
@@ -229,6 +270,14 @@ impl State {
                         resource: wgpu::BindingResource::TextureView(
                             &self.pipeline_data.render_texture,
                         ),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.pipeline_data.materials_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: self.pipeline_data.spheres_buffer.as_entire_binding(),
                     },
                 ],
             });
