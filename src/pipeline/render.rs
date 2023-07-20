@@ -1,3 +1,5 @@
+use crate::storage;
+
 pub struct RenderPipeline {
     pub pipeline: wgpu::RenderPipeline,
     pub bind_group_layout: wgpu::BindGroupLayout,
@@ -38,7 +40,7 @@ impl RenderPipeline {
             vertex: wgpu::VertexState {
                 module: &module,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[storage::Vertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &module,

@@ -4,8 +4,29 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     pipeline::{compute::ComputePipeline, render::RenderPipeline},
-    uniforms,
+    storage,
 };
+
+const QUAD_VERTICIES: &[storage::Vertex] = &[
+    storage::Vertex {
+        position: glam::f32::vec3(-1.0, 1.0, 0.0),
+        uvs: glam::f32::vec2(0.0, 1.0),
+    },
+    storage::Vertex {
+        position: glam::f32::vec3(-1.0, -1.0, 0.0),
+        uvs: glam::f32::vec2(0.0, 0.0),
+    },
+    storage::Vertex {
+        position: glam::f32::vec3(1.0, -1.0, 0.0),
+        uvs: glam::f32::vec2(1.0, 0.0),
+    },
+    storage::Vertex {
+        position: glam::f32::vec3(1.0, 1.0, 0.0),
+        uvs: glam::f32::vec2(1.0, 1.0),
+    },
+];
+
+const QUAD_INDICES: &[u32] = &[0, 1, 2, 2, 3, 0];
 
 pub struct State {
     surface: wgpu::Surface,
@@ -23,6 +44,8 @@ pub struct Pipelines {
 }
 
 pub struct PipelineData {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
     globals_buffer: wgpu::Buffer,
     render_texture: wgpu::TextureView,
 }
@@ -90,8 +113,24 @@ impl State {
         };
 
         let pipeline_data = PipelineData {
+            vertex_buffer: {
+                let bytes = bytemuck::cast_slice(QUAD_VERTICIES);
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: &bytes,
+                    usage: wgpu::BufferUsages::VERTEX,
+                })
+            },
+            index_buffer: {
+                let bytes = bytemuck::cast_slice(QUAD_INDICES);
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index Buffer"),
+                    contents: &bytes,
+                    usage: wgpu::BufferUsages::INDEX,
+                })
+            },
             globals_buffer: {
-                let globals_uniform = uniforms::Globals {
+                let globals_uniform = storage::Globals {
                     camera_view_projection: glam::f32::Mat4::IDENTITY,
                 };
 
@@ -228,9 +267,9 @@ impl State {
                             resolve_target: None,
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.1,
-                                    g: 0.2,
-                                    b: 0.3,
+                                    r: 1.0,
+                                    g: 0.0,
+                                    b: 0.5,
                                     a: 1.0,
                                 }),
                                 store: true,
@@ -242,7 +281,13 @@ impl State {
 
                 render_pass.set_pipeline(&self.pipelines.render.pipeline);
                 render_pass.set_bind_group(0, &bind_group, &[]);
-                render_pass.draw(0..3, 0..1);
+                render_pass.set_vertex_buffer(0, self.pipeline_data.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.pipeline_data.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint32,
+                );
+
+                render_pass.draw_indexed(0..6, 0, 0..1);
             }
         }
 
