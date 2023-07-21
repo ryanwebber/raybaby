@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use app::State;
 use winit::{
+    dpi::LogicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -15,7 +16,14 @@ use winit::{
 
 async fn run() {
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_inner_size(LogicalSize {
+            width: 960,
+            height: 540,
+        })
+        .build(&event_loop)
+        .unwrap();
+
     let mut state = State::new(&window).await;
 
     let mut last_frame_inst = Instant::now();

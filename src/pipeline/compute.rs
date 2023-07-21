@@ -30,7 +30,7 @@ impl ComputePipeline {
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::StorageTexture {
                         format: wgpu::TextureFormat::Rgba32Float,
-                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        access: wgpu::StorageTextureAccess::ReadWrite,
                         view_dimension: wgpu::TextureViewDimension::D2,
                     },
                     count: None,

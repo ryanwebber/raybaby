@@ -1,3 +1,4 @@
+use rand::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
@@ -33,6 +34,7 @@ pub struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
+    globals: storage::Globals,
     pipelines: Pipelines,
     pipeline_data: PipelineData,
 }
@@ -67,7 +69,7 @@ impl State {
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
@@ -108,6 +110,32 @@ impl State {
 
         surface.configure(&device, &config);
 
+        let globals = {
+            let fov: f32 = 0.87;
+            let focal_distance: f32 = 10.0;
+            let aspect_ratio = (size.width as f32) / (size.height as f32);
+            let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
+            let plane_width = plane_height * aspect_ratio;
+            storage::Globals {
+                camera: storage::Camera {
+                    focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
+                    world_space_position: glam::f32::vec3(0.0, 3.0, 0.0),
+                    local_to_world_matrix: glam::f32::Mat4::from_euler(
+                        glam::EulerRot::XYZ,
+                        0.14,
+                        0.0,
+                        0.0,
+                    ),
+                    near_clip: 0.1,
+                    far_clip: 2000.0,
+                },
+                frame: 0,
+                random_seed: random(),
+                max_ray_bounces: 30,
+                max_samples_per_pixel: 4,
+            }
+        };
+
         let pipelines = Pipelines {
             compute: ComputePipeline::new(&device),
             render: RenderPipeline::new(&device, surface_format),
@@ -131,44 +159,37 @@ impl State {
                 })
             },
             globals_buffer: {
-                let globals_uniform = {
-                    let fov: f32 = 0.87;
-                    let focal_distance: f32 = 10.0;
-                    let aspect_ratio = (size.width as f32) / (size.height as f32);
-                    let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
-                    let plane_width = plane_height * aspect_ratio;
-                    storage::Globals {
-                        camera: storage::Camera {
-                            focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
-                            world_space_position: glam::f32::vec3(0.0, 0.0, 0.0),
-                            local_to_world_matrix: glam::f32::Mat4::from_euler(
-                                glam::EulerRot::XYZ,
-                                0.0,
-                                0.0,
-                                0.0,
-                            ),
-                            near_clip: 0.1,
-                            far_clip: 2000.0,
-                        },
-                    }
-                };
-
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Globals buffer"),
-                    contents: &storage::Uniform(&globals_uniform).into_bytes(),
+                    contents: &storage::Uniform(&globals).into_bytes(),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 })
             },
             materials_buffer: {
                 let materials: &[storage::Material] = &[
                     storage::Material {
-                        color: glam::f32::vec4(1.0, 0.0, 0.0, 1.0),
+                        color: glam::f32::vec4(1.0, 1.0, 0.8, 1.0),
+                        luminosity: 6.0,
                     },
                     storage::Material {
-                        color: glam::f32::vec4(0.0, 1.0, 0.0, 1.0),
+                        color: glam::f32::vec4(0.3, 0.1, 0.5, 1.0),
+                        luminosity: 0.0,
                     },
                     storage::Material {
-                        color: glam::f32::vec4(0.0, 0.0, 1.0, 1.0),
+                        color: glam::f32::vec4(0.95, 0.1, 0.1, 1.0),
+                        luminosity: 0.0,
+                    },
+                    storage::Material {
+                        color: glam::f32::vec4(0.1, 0.7, 0.5, 1.0),
+                        luminosity: 0.0,
+                    },
+                    storage::Material {
+                        color: glam::f32::vec4(0.95, 0.8, 0.1, 1.0),
+                        luminosity: 0.0,
+                    },
+                    storage::Material {
+                        color: glam::f32::vec4(0.95, 0.95, 0.95, 1.0),
+                        luminosity: 0.0,
                     },
                 ];
 
@@ -181,19 +202,34 @@ impl State {
             spheres_buffer: {
                 let spheres: &[storage::Sphere] = &[
                     storage::Sphere {
-                        position: glam::f32::vec3(0.0, -1.0, 10.0),
+                        position: glam::f32::vec3(-12.0, 20.0, 30.0),
+                        radius: 12.0,
+                        material_id: 0,
+                    },
+                    storage::Sphere {
+                        position: glam::f32::vec3(2.0, -53.0, 12.0),
+                        radius: 50.0,
+                        material_id: 1,
+                    },
+                    storage::Sphere {
+                        position: glam::f32::vec3(-1.0, -1.8, 10.0),
                         radius: 1.2,
-                        material_id: 9,
+                        material_id: 2,
                     },
                     storage::Sphere {
-                        position: glam::f32::vec3(2.6, 0.0, 12.0),
+                        position: glam::f32::vec3(3.6, -1.0, 12.0),
                         radius: 2.0,
-                        material_id: 15,
+                        material_id: 3,
                     },
                     storage::Sphere {
-                        position: glam::f32::vec3(-2.0, 1.0, 7.0),
+                        position: glam::f32::vec3(-2.4, -2.8, 9.5),
                         radius: 0.4,
-                        material_id: 17,
+                        material_id: 4,
+                    },
+                    storage::Sphere {
+                        position: glam::f32::vec3(1.1, -2.2, 10.0),
+                        radius: 0.8,
+                        material_id: 5,
                     },
                 ];
 
@@ -229,6 +265,7 @@ impl State {
             queue,
             config,
             size,
+            globals,
             pipelines,
             pipeline_data,
         }
@@ -255,7 +292,9 @@ impl State {
         false
     }
 
-    pub fn update(&mut self) {}
+    pub fn update(&mut self) {
+        self.globals.frame += 1;
+    }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -268,6 +307,26 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        // Copy frame data to GPU
+        {
+            let globals_data = storage::Uniform(&self.globals).into_bytes();
+            let globals_buffer =
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: None,
+                        contents: &globals_data,
+                        usage: wgpu::BufferUsages::COPY_SRC,
+                    });
+
+            encoder.copy_buffer_to_buffer(
+                &globals_buffer,
+                0,
+                &self.pipeline_data.globals_buffer,
+                0,
+                globals_data.len() as wgpu::BufferAddress,
+            );
+        }
 
         // Compute pass
         {

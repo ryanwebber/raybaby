@@ -66,6 +66,10 @@ where
 #[derive(ShaderType)]
 pub struct Globals {
     pub camera: Camera,
+    pub frame: u32,
+    pub random_seed: u32,
+    pub max_ray_bounces: u32,
+    pub max_samples_per_pixel: u32,
 }
 
 #[derive(ShaderType)]
@@ -80,6 +84,7 @@ pub struct Camera {
 #[derive(ShaderType)]
 pub struct Material {
     pub color: f32::Vec4,
+    pub luminosity: f32,
 }
 
 #[derive(ShaderType)]
