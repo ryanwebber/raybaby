@@ -7,6 +7,8 @@ struct Camera {
     focal_plane: vec3<f32>,
     world_space_position: vec3<f32>,
     local_to_world_matrix: mat4x4<f32>,
+    near_clip: f32,
+    far_clip: f32,
 }
 
 struct Material {
@@ -22,6 +24,9 @@ struct Sphere {
     position: vec3<f32>,
     radius: f32,
     material_id: u32,
+
+    // 16 byte alignment
+    _padding: array<u32, 3>,
 }
 
 struct SphereBuffer {
@@ -70,6 +75,24 @@ fn ray_sphere_intersection(ray: Ray, center: vec3<f32>, radius: f32) -> HitInfo 
     return hit;
 }
 
+fn ray_world_collision(ray: Ray) -> HitInfo {
+    var hit: HitInfo;
+    hit.hit = false;
+    hit.distance = globals.camera.far_clip;
+
+    let spheres = &sphere_buffer.spheres;
+    for (var i: u32 = 0u; i < sphere_buffer.count; i++) {
+        let sphere_pos = (*spheres)[i].position;
+        let sphere_radius = (*spheres)[i].radius;
+        let hit_info = ray_sphere_intersection(ray, sphere_pos, sphere_radius);
+        if (hit_info.hit && hit_info.distance < hit.distance) {
+            hit = hit_info;
+        }
+    }
+
+    return hit;
+}
+
 fn trace(ray: Ray) -> vec4<f32> {
     return vec4<f32>(0.0, 0.0, 0.0, 1.0);
 }
@@ -104,8 +127,13 @@ fn main(@builtin(global_invocation_id) g_invocation_id: vec3<u32>) {
     ray.origin = globals.camera.world_space_position;
     ray.direction = normalize(focusPoint.xyz - ray.origin);
     
-    let hit_info = ray_sphere_intersection(ray, vec3<f32>(1.0, -0.2, 5.0), 2.0);
-    let color = select(vec4<f32>(0.0), vec4<f32>(vec3<f32>(dot(hit_info.normal, -ray.direction)), 1.0), hit_info.hit);
+    var color = vec3<f32>(0.0, 0.0, 0.0);
 
-    textureStore(tex, g_invocation_id.xy, color);
+    let hit = ray_world_collision(ray);
+    if (hit.hit) {
+        let dp = dot(-ray.direction, hit.normal);
+        color = ray.direction * dp;
+    }
+
+    textureStore(tex, g_invocation_id.xy, vec4<f32>(color, 1.0));
 }

@@ -147,13 +147,15 @@ impl State {
                                 0.0,
                                 0.0,
                             ),
+                            near_clip: 0.1,
+                            far_clip: 2000.0,
                         },
                     }
                 };
 
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Globals buffer"),
-                    contents: &storage::Uniform(globals_uniform).into_bytes(),
+                    contents: &storage::Uniform(&globals_uniform).into_bytes(),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 })
             },
@@ -177,11 +179,23 @@ impl State {
                 })
             },
             spheres_buffer: {
-                let spheres: &[storage::Sphere] = &[storage::Sphere {
-                    position: glam::f32::vec3(0.0, 0.0, 10.0),
-                    radius: 5.0,
-                    material_id: 0,
-                }];
+                let spheres: &[storage::Sphere] = &[
+                    storage::Sphere {
+                        position: glam::f32::vec3(0.0, -1.0, 10.0),
+                        radius: 1.2,
+                        material_id: 9,
+                    },
+                    storage::Sphere {
+                        position: glam::f32::vec3(2.6, 0.0, 12.0),
+                        radius: 2.0,
+                        material_id: 15,
+                    },
+                    storage::Sphere {
+                        position: glam::f32::vec3(-2.0, 1.0, 7.0),
+                        radius: 0.4,
+                        material_id: 17,
+                    },
+                ];
 
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Spheres buffer"),

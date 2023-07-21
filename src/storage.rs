@@ -1,40 +1,59 @@
-use encase::{private::WriteInto, DynamicStorageBuffer, ShaderSize, ShaderType, UniformBuffer};
+use encase::{
+    private::WriteInto, ArrayLength, ShaderSize, ShaderType, StorageBuffer, UniformBuffer,
+};
 use glam::f32;
 
 pub trait Storable {
     fn into_bytes(&self) -> Vec<u8>;
 }
 
-pub struct Uniform<T>(pub T)
+pub struct Uniform<'a, T>(pub &'a T)
 where
     T: ShaderType + ShaderSize + WriteInto;
 
-impl<T> Storable for Uniform<T>
+impl<T> Storable for Uniform<'_, T>
 where
     T: ShaderType + ShaderSize + WriteInto,
 {
     fn into_bytes(&self) -> Vec<u8> {
         let mut buffer = UniformBuffer::new(Vec::new());
-        buffer.write(&self.0).expect("Unable to write uniform");
+        buffer.write(self.0).expect("Unable to write uniform");
         buffer.into_inner()
     }
 }
 
 pub struct Buffer<'a, T>(pub &'a [T])
 where
-    T: ShaderType + ShaderSize + WriteInto;
+    T: ShaderSize;
+
+#[derive(ShaderType)]
+struct SizedBuffer<'a, T: ShaderSize + 'a> {
+    length: ArrayLength,
+
+    #[size(runtime)]
+    buffer: &'a [T],
+}
+
+impl<'a, T> SizedBuffer<'a, T>
+where
+    T: ShaderSize + 'a,
+{
+    fn new(buffer: &'a [T]) -> Self {
+        Self {
+            length: ArrayLength,
+            buffer,
+        }
+    }
+}
 
 impl<T> Storable for Buffer<'_, T>
 where
-    T: ShaderType + ShaderSize + WriteInto,
+    T: ShaderSize + WriteInto,
 {
     fn into_bytes(&self) -> Vec<u8> {
-        let len = self.0.len() as u32;
-        let mut buffer = DynamicStorageBuffer::new_with_alignment(Vec::new(), 32);
-        buffer.write(&len).unwrap();
-        buffer
-            .write(&self.0)
-            .expect("Unable to write object buffer");
+        let data = SizedBuffer::new(self.0);
+        let mut buffer = StorageBuffer::new(Vec::new());
+        buffer.write(&data).expect("Unable to write buffer");
 
         buffer.into_inner()
     }
@@ -54,6 +73,8 @@ pub struct Camera {
     pub focal_plane: f32::Vec3,
     pub world_space_position: f32::Vec3,
     pub local_to_world_matrix: f32::Mat4,
+    pub near_clip: f32,
+    pub far_clip: f32,
 }
 
 #[derive(ShaderType)]
@@ -90,5 +111,31 @@ impl Vertex {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBS,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_buffer_serialize() {
+        let spheres: &[Sphere] = &[
+            Sphere {
+                position: f32::vec3(0.0, 1.0, 2.0),
+                radius: 23.0,
+                material_id: 0x55,
+            },
+            Sphere {
+                position: f32::vec3(3.0, 4.0, 5.0),
+                radius: 24.0,
+                material_id: 0x77,
+            },
+        ];
+
+        let bytes = Buffer(spheres).into_bytes();
+        assert_eq!(bytes[0], 2);
+        assert_eq!(bytes.len() % 16, 0);
     }
 }

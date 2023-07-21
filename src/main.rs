@@ -4,6 +4,8 @@ mod storage;
 mod traits;
 mod types;
 
+use std::time::Instant;
+
 use app::State;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
@@ -15,6 +17,9 @@ async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     let mut state = State::new(&window).await;
+
+    let mut last_frame_inst = Instant::now();
+    let (mut frame_count, mut accum_time) = (0, 0.0);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -44,6 +49,20 @@ async fn run() {
             }
         }
         Event::RedrawRequested(window_id) if window_id == window.id() => {
+            {
+                accum_time += last_frame_inst.elapsed().as_secs_f32();
+                last_frame_inst = Instant::now();
+                frame_count += 1;
+                if frame_count == 100 {
+                    println!(
+                        "Avg frame time {}ms",
+                        accum_time * 1000.0 / frame_count as f32
+                    );
+                    accum_time = 0.0;
+                    frame_count = 0;
+                }
+            }
+
             state.update();
             match state.render() {
                 Ok(_) => {}
