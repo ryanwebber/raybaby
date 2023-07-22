@@ -7,6 +7,9 @@ struct Globals {
     camera: Camera,
     frame: u32,
     random_seed: u32,
+    skybox_color: vec3<f32>,
+    ambient_lighting_color: vec3<f32>,
+    ambient_lighting_strength: f32,
     max_ray_bounces: u32,
     max_samples_per_pixel: u32,
 }
@@ -60,7 +63,7 @@ struct HitInfo {
 // ============================= Ray Tracing Logic ============================ */
 
 fn get_environment_lighting() -> vec3<f32> {
-    return vec3<f32>(0.02);
+    return globals.ambient_lighting_color * globals.ambient_lighting_strength;
 }
 
 fn ray_sphere_intersection(ray: Ray, sphere: Sphere) -> HitInfo {
@@ -81,15 +84,12 @@ fn ray_sphere_intersection(ray: Ray, sphere: Sphere) -> HitInfo {
 
     if (discriminant >= 0.0) {
         var temp = (-b - sqrt(discriminant)) / (2.0 * a);
-        if (temp < 0.0) {
-            temp = (-b + sqrt(discriminant)) / (2.0 * a);
-        }
 
-        if (temp > 0.0) {
+        if (temp >= 0.0) {
             hit.hit = true;
             hit.distance = temp;
             hit.position = ray.origin + ray.direction * temp;
-            hit.normal = (hit.position - center) / radius;
+            hit.normal = normalize(hit.position - center);
             hit.material_id = sphere.material_id;
         }
     }
@@ -122,22 +122,35 @@ fn trace(ray: Ray, rs: RandomState) -> vec3<f32> {
     while (bounces <= globals.max_ray_bounces) {
         let hit_info = ray_world_collision(ray);
         if (!hit_info.hit) {
+            if (bounces > 0u) {
+                let env_light = get_environment_lighting();
+                light += vec3<f32>(
+                    env_light.x * ray_color.x,
+                    env_light.y * ray_color.y,
+                    env_light.z * ray_color.z
+                );
+            } else {
+                light = globals.skybox_color;
+            }
+
             break;
         }
 
-        bounces++;
+        let diffuse_random = random_unit_vector(rs);
+        let diffuse_reflection = select(
+            -diffuse_random,
+            diffuse_random,
+            dot(diffuse_random, hit_info.normal) > 0.0
+        );
 
-        let mat = mat_buffer.materials[hit_info.material_id];
-
-        // Update the ray to be the reflected ray
-
-        let diffuse_reflection = normalize(hit_info.normal + random_unit_vector(rs));
         let specular_reflection = reflect(ray.direction, hit_info.normal);
 
         ray.origin = hit_info.position;
         ray.direction = normalize(mix(diffuse_reflection, specular_reflection, 0.0));
 
-        // Update light calculations
+        bounces++;
+
+        let mat = mat_buffer.materials[hit_info.material_id];
 
         let emission = mat.color.xyz * mat.luminosity;
         let emission_strength = dot(hit_info.normal, ray.direction);
@@ -155,13 +168,6 @@ fn trace(ray: Ray, rs: RandomState) -> vec3<f32> {
 
         let p = max(ray_color.x, max(ray_color.y, ray_color.z));
         if (random_value(rs) >= p) {
-            let env_light = get_environment_lighting();
-            light += vec3<f32>(
-                env_light.x * ray_color.x,
-                env_light.y * ray_color.y,
-                env_light.z * ray_color.z
-            );
-
             break;
         }
 
@@ -253,7 +259,7 @@ fn main(
     
     color /= max(f32(num_samples), 1.0);
 
-    var weight = 1.0 / (f32(globals.frame) / 4.0 + 1.0);
+    let weight = 1.0 / (f32(globals.frame) / 4.0 + 1.0);
     let previous_color = textureLoad(tex, g_invocation_id.xy).xyz;
     let color_average = saturate(previous_color * (1.0 - weight) + color * weight);
 

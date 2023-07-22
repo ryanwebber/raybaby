@@ -1,22 +1,108 @@
 Scene (
-    camera: Perspective(
-        fov: 50,
-        near: 0.1,
-        far: 2000,
+    camera: (
+        lens: Perspective (
+            fov: 50,
+        ),
+        transform: Transform (
+            position: (0.0, 2.0, 0.0),
+            rotation: (8.0, 0.0, 0.0),
+        ),
+        clipping: Clipping (
+            near: 0.1,
+            far: 2000,
+        ),
     ),
     objects: [
-        Object(
+        Object (
             surface: Sphere (
-                radius: 3,
+                radius: 64,
             ),
             transform: Transform (
-                position: (0.0, 0.0, 10.0),
-                scale: (1.0, 1.0, 1.0),
-                rotation: (0.0, 0.0, 0.0),
+                position: (-100.0, 60.0, 120.0),
+                rotation: (8.0, 0.0, 0.0),
             ),
             material: Material (
-                color: (1.0, 0.0, 0.0, 1.0),
+                color: (1.0, 1.0, 0.8, 1.0),
+                luminosity: 14.0,
             )
-        )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 50,
+            ),
+            transform: Transform (
+                position: (2.0, -53.0, 12.0),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.3, 0.1, 0.5, 1.0),
+                luminosity: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 1.2,
+            ),
+            transform: Transform (
+                position: (-1.0, -2.0, 10.0),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.95, 0.1, 0.1, 1.0),
+                luminosity: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 2,
+            ),
+            transform: Transform (
+                position: (3.6, -1.0, 12.0),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.1, 0.7, 0.5, 1.0),
+                luminosity: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 0.4,
+            ),
+            transform: Transform (
+                position: (-2.4, -2.85, 9.5),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.95, 0.8, 0.1, 1.0),
+                luminosity: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 0.9,
+            ),
+            transform: Transform (
+                position: (0.8, -2.1, 11.3),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.95, 0.95, 0.95, 1.0),
+                luminosity: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 1.2,
+            ),
+            transform: Transform (
+                position: (-4.6, -2.25, 11),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.05, 0.04, 0.05, 1.0),
+                luminosity: 0.0,
+            )
+        ),
     ]
 )

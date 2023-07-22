@@ -68,6 +68,9 @@ pub struct Globals {
     pub camera: Camera,
     pub frame: u32,
     pub random_seed: u32,
+    pub skybox_color: f32::Vec3,
+    pub ambient_lighting_color: f32::Vec3,
+    pub ambient_lighting_strength: f32,
     pub max_ray_bounces: u32,
     pub max_samples_per_pixel: u32,
 }

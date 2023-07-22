@@ -8,8 +8,21 @@ pub struct Scene {
 }
 
 #[derive(Debug, Deserialize)]
-pub enum Camera {
-    Perspective { fov: f32, near: f32, far: f32 },
+pub struct Camera {
+    pub transform: Transform,
+    pub lens: Lens,
+    pub clipping: Clipping,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum Lens {
+    Perspective { fov: f32 },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Clipping {
+    pub near: f32,
+    pub far: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,12 +41,12 @@ pub enum Surface {
 pub struct Transform {
     pub position: f32::Vec3,
     pub rotation: f32::Vec3,
-    pub scale: f32::Vec3,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Material {
     pub color: f32::Vec4,
+    pub luminosity: f32,
 }
 
 #[cfg(test)]

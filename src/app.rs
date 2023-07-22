@@ -1,10 +1,10 @@
-use rand::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     pipeline::{compute::ComputePipeline, render::RenderPipeline},
     storage::{self, Storable},
+    types,
 };
 
 const QUAD_VERTICIES: &[storage::Vertex] = &[
@@ -27,6 +27,16 @@ const QUAD_VERTICIES: &[storage::Vertex] = &[
 ];
 
 const QUAD_INDICES: &[u32] = &[0, 1, 2, 2, 3, 0];
+
+pub struct Parameters {
+    pub frame: u32,
+    pub random_seed: u32,
+    pub max_ray_bounces: u32,
+    pub max_samples_per_pixel: u32,
+    pub skybox_color: glam::Vec3,
+    pub ambient_lighting_color: glam::Vec3,
+    pub ambient_lighting_strength: f32,
+}
 
 pub struct State {
     surface: wgpu::Surface,
@@ -54,8 +64,67 @@ pub struct PipelineData {
 }
 
 impl State {
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(window: &Window, scene: &types::Scene, parameters: &Parameters) -> Self {
         let size = window.inner_size();
+
+        let globals = {
+            storage::Globals {
+                camera: match scene.camera.lens {
+                    types::Lens::Perspective { fov } => {
+                        let fov = fov.to_radians();
+                        let focal_distance: f32 = 10.0;
+                        let aspect_ratio = (size.width as f32) / (size.height as f32);
+                        let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
+                        let plane_width = plane_height * aspect_ratio;
+
+                        let rotation = scene.camera.transform.rotation;
+                        let position = scene.camera.transform.position;
+
+                        storage::Camera {
+                            focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
+                            world_space_position: position,
+                            local_to_world_matrix: glam::f32::Mat4::from_euler(
+                                glam::EulerRot::XYZ,
+                                rotation.x.to_radians(),
+                                rotation.y.to_radians(),
+                                rotation.z.to_radians(),
+                            ),
+                            near_clip: scene.camera.clipping.near,
+                            far_clip: scene.camera.clipping.far,
+                        }
+                    }
+                },
+                frame: parameters.frame,
+                random_seed: parameters.random_seed,
+                skybox_color: parameters.skybox_color,
+                ambient_lighting_color: parameters.ambient_lighting_color,
+                ambient_lighting_strength: parameters.ambient_lighting_strength,
+                max_ray_bounces: parameters.max_ray_bounces,
+                max_samples_per_pixel: parameters.max_samples_per_pixel,
+            }
+        };
+
+        let spheres = scene
+            .objects
+            .iter()
+            .enumerate()
+            .filter_map(|(i, object)| match object.surface {
+                types::Surface::Sphere { radius } => Some(storage::Sphere {
+                    position: object.transform.position,
+                    radius,
+                    material_id: i as u32,
+                }),
+            })
+            .collect::<Vec<_>>();
+
+        let materials = scene
+            .objects
+            .iter()
+            .map(|object| storage::Material {
+                color: object.material.color,
+                luminosity: object.material.luminosity,
+            })
+            .collect::<Vec<_>>();
 
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -110,32 +179,6 @@ impl State {
 
         surface.configure(&device, &config);
 
-        let globals = {
-            let fov: f32 = 0.87;
-            let focal_distance: f32 = 10.0;
-            let aspect_ratio = (size.width as f32) / (size.height as f32);
-            let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
-            let plane_width = plane_height * aspect_ratio;
-            storage::Globals {
-                camera: storage::Camera {
-                    focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
-                    world_space_position: glam::f32::vec3(0.0, 3.0, 0.0),
-                    local_to_world_matrix: glam::f32::Mat4::from_euler(
-                        glam::EulerRot::XYZ,
-                        0.14,
-                        0.0,
-                        0.0,
-                    ),
-                    near_clip: 0.1,
-                    far_clip: 2000.0,
-                },
-                frame: 0,
-                random_seed: random(),
-                max_ray_bounces: 30,
-                max_samples_per_pixel: 4,
-            }
-        };
-
         let pipelines = Pipelines {
             compute: ComputePipeline::new(&device),
             render: RenderPipeline::new(&device, surface_format),
@@ -166,33 +209,6 @@ impl State {
                 })
             },
             materials_buffer: {
-                let materials: &[storage::Material] = &[
-                    storage::Material {
-                        color: glam::f32::vec4(1.0, 1.0, 0.8, 1.0),
-                        luminosity: 6.0,
-                    },
-                    storage::Material {
-                        color: glam::f32::vec4(0.3, 0.1, 0.5, 1.0),
-                        luminosity: 0.0,
-                    },
-                    storage::Material {
-                        color: glam::f32::vec4(0.95, 0.1, 0.1, 1.0),
-                        luminosity: 0.0,
-                    },
-                    storage::Material {
-                        color: glam::f32::vec4(0.1, 0.7, 0.5, 1.0),
-                        luminosity: 0.0,
-                    },
-                    storage::Material {
-                        color: glam::f32::vec4(0.95, 0.8, 0.1, 1.0),
-                        luminosity: 0.0,
-                    },
-                    storage::Material {
-                        color: glam::f32::vec4(0.95, 0.95, 0.95, 1.0),
-                        luminosity: 0.0,
-                    },
-                ];
-
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Materials buffer"),
                     contents: &storage::Buffer(&materials).into_bytes(),
@@ -200,39 +216,6 @@ impl State {
                 })
             },
             spheres_buffer: {
-                let spheres: &[storage::Sphere] = &[
-                    storage::Sphere {
-                        position: glam::f32::vec3(-12.0, 20.0, 30.0),
-                        radius: 12.0,
-                        material_id: 0,
-                    },
-                    storage::Sphere {
-                        position: glam::f32::vec3(2.0, -53.0, 12.0),
-                        radius: 50.0,
-                        material_id: 1,
-                    },
-                    storage::Sphere {
-                        position: glam::f32::vec3(-1.0, -1.8, 10.0),
-                        radius: 1.2,
-                        material_id: 2,
-                    },
-                    storage::Sphere {
-                        position: glam::f32::vec3(3.6, -1.0, 12.0),
-                        radius: 2.0,
-                        material_id: 3,
-                    },
-                    storage::Sphere {
-                        position: glam::f32::vec3(-2.4, -2.8, 9.5),
-                        radius: 0.4,
-                        material_id: 4,
-                    },
-                    storage::Sphere {
-                        position: glam::f32::vec3(1.1, -2.2, 10.0),
-                        radius: 0.8,
-                        material_id: 5,
-                    },
-                ];
-
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Spheres buffer"),
                     contents: &storage::Buffer(&spheres).into_bytes(),
