@@ -1,5 +1,7 @@
 # Raybaby 
 
+[![Rust](https://github.com/ryanwebber/raybaby/actions/workflows/rust.yml/badge.svg)](https://github.com/ryanwebber/raybaby/actions/workflows/rust.yml)
+
 A simple raytracing renderer using [wgpu](https://wgpu.rs) and [wgsl](https://www.w3.org/TR/WGSL/). 
 
 ## Usage
