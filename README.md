@@ -1,6 +1,6 @@
 # Raybaby 
 
-Baby's first raytracer.
+A simple raytracing renderer using wgpu and wgsl. 
 
 ## Usage
 
