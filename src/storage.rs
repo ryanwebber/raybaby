@@ -88,6 +88,7 @@ pub struct Camera {
 pub struct Material {
     pub color: f32::Vec4,
     pub luminosity: f32,
+    pub smoothness: f32,
 }
 
 #[derive(ShaderType)]

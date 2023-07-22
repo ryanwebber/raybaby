@@ -24,6 +24,7 @@ Scene (
             material: Material (
                 color: (1.0, 1.0, 0.8, 1.0),
                 luminosity: 14.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -37,6 +38,7 @@ Scene (
             material: Material (
                 color: (0.3, 0.1, 0.5, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -50,6 +52,7 @@ Scene (
             material: Material (
                 color: (0.95, 0.1, 0.1, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -63,6 +66,7 @@ Scene (
             material: Material (
                 color: (0.1, 0.7, 0.5, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -76,6 +80,7 @@ Scene (
             material: Material (
                 color: (0.95, 0.8, 0.1, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -89,6 +94,7 @@ Scene (
             material: Material (
                 color: (0.95, 0.95, 0.95, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
         Object (
@@ -102,6 +108,35 @@ Scene (
             material: Material (
                 color: (0.05, 0.04, 0.05, 1.0),
                 luminosity: 0.0,
+                smoothness: 0.0,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 2,
+            ),
+            transform: Transform (
+                position: (4.6, -1, 7.9),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.5, 0.5, 0.5, 1.0),
+                luminosity: 0.0,
+                smoothness: 0.8,
+            )
+        ),
+        Object (
+            surface: Sphere (
+                radius: 0.6,
+            ),
+            transform: Transform (
+                position: (1.8, -2.5, 7.6),
+                rotation: (8.0, 0.0, 0.0),
+            ),
+            material: Material (
+                color: (0.95, 0.8, 0.1, 1.0),
+                luminosity: 0.0,
+                smoothness: 0.0,
             )
         ),
     ]

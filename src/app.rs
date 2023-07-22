@@ -123,6 +123,7 @@ impl State {
             .map(|object| storage::Material {
                 color: object.material.color,
                 luminosity: object.material.luminosity,
+                smoothness: object.material.smoothness,
             })
             .collect::<Vec<_>>();
 

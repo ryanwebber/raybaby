@@ -25,7 +25,8 @@ struct Camera {
 struct Material {
     color: vec4<f32>,
     luminosity: f32,
-    _padding: array<u32, 3>,
+    smoothness: f32,
+    _padding: array<u32, 2>,
 }
 
 struct MaterialBuffer {
@@ -136,35 +137,20 @@ fn trace(ray: Ray, rs: RandomState) -> vec3<f32> {
             break;
         }
 
-        let diffuse_random = random_unit_vector(rs);
-        let diffuse_reflection = select(
-            -diffuse_random,
-            diffuse_random,
-            dot(diffuse_random, hit_info.normal) > 0.0
-        );
-
-        let specular_reflection = reflect(ray.direction, hit_info.normal);
-
-        ray.origin = hit_info.position;
-        ray.direction = normalize(mix(diffuse_reflection, specular_reflection, 0.0));
-
         bounces++;
 
         let mat = mat_buffer.materials[hit_info.material_id];
 
-        let emission = mat.color.xyz * mat.luminosity;
-        let emission_strength = dot(hit_info.normal, ray.direction);
-        light += vec3<f32>(
-            emission.x * ray_color.x,
-            emission.y * ray_color.y,
-            emission.z * ray_color.z
-        );
+        let diffuse_reflection = normalize(hit_info.normal + random_unit_vector(rs));
+        let specular_reflection = reflect(ray.direction, hit_info.normal);
 
-        ray_color = vec3<f32>(
-            ray_color.x * mat.color.x,
-            ray_color.y * mat.color.y,
-            ray_color.z * mat.color.z
-        ) * emission_strength * 2.0;
+        ray.origin = hit_info.position;
+        ray.direction = normalize(mix(diffuse_reflection, specular_reflection, mat.smoothness));
+
+        let emission = mat.color.xyz * mat.luminosity;
+        light += emission * ray_color;
+
+        ray_color *= mix(mat.color.xyz, mat.color.xyz, mat.smoothness);
 
         let p = max(ray_color.x, max(ray_color.y, ray_color.z));
         if (random_value(rs) >= p) {

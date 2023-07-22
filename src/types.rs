@@ -47,6 +47,7 @@ pub struct Transform {
 pub struct Material {
     pub color: f32::Vec4,
     pub luminosity: f32,
+    pub smoothness: f32,
 }
 
 #[cfg(test)]
