@@ -16,7 +16,7 @@ pub struct Camera {
 
 #[derive(Debug, Deserialize)]
 pub enum Lens {
-    Perspective { fov: f32 },
+    Perspective { fov: f32, focal_distance: f32 },
 }
 
 #[derive(Debug, Deserialize)]

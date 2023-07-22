@@ -36,6 +36,7 @@ pub struct Parameters {
     pub skybox_color: glam::Vec3,
     pub ambient_lighting_color: glam::Vec3,
     pub ambient_lighting_strength: f32,
+    pub focal_blur_strength: f32,
 }
 
 pub struct State {
@@ -70,9 +71,11 @@ impl State {
         let globals = {
             storage::Globals {
                 camera: match scene.camera.lens {
-                    types::Lens::Perspective { fov } => {
+                    types::Lens::Perspective {
+                        fov,
+                        focal_distance,
+                    } => {
                         let fov = fov.to_radians();
-                        let focal_distance: f32 = 10.0;
                         let aspect_ratio = (size.width as f32) / (size.height as f32);
                         let plane_height = 2.0 * (fov / 2.0).tan() * focal_distance;
                         let plane_width = plane_height * aspect_ratio;
@@ -80,8 +83,10 @@ impl State {
                         let rotation = scene.camera.transform.rotation;
                         let position = scene.camera.transform.position;
 
+                        println!("Focal distance: {}", focal_distance);
+
                         storage::Camera {
-                            focal_plane: glam::f32::vec3(plane_width, plane_height, focal_distance),
+                            focal_view: glam::f32::vec3(plane_width, plane_height, focal_distance),
                             world_space_position: position,
                             local_to_world_matrix: glam::f32::Mat4::from_euler(
                                 glam::EulerRot::XYZ,
@@ -101,6 +106,7 @@ impl State {
                 ambient_lighting_strength: parameters.ambient_lighting_strength,
                 max_ray_bounces: parameters.max_ray_bounces,
                 max_samples_per_pixel: parameters.max_samples_per_pixel,
+                focal_blur_strength: parameters.focal_blur_strength,
             }
         };
 

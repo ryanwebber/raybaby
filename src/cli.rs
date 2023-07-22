@@ -34,6 +34,10 @@ pub enum Commands {
         /// The maximum number of rays per pixel per render pass
         #[arg(long, default_value_t = 4)]
         max_samples_per_pixel: u32,
+
+        /// The strength of blur for objects out of focus
+        #[arg(long, default_value_t = 200.0)]
+        focal_blur_strength: f32,
     },
 }
 

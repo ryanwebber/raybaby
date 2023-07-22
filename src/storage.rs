@@ -73,11 +73,12 @@ pub struct Globals {
     pub ambient_lighting_strength: f32,
     pub max_ray_bounces: u32,
     pub max_samples_per_pixel: u32,
+    pub focal_blur_strength: f32,
 }
 
 #[derive(ShaderType)]
 pub struct Camera {
-    pub focal_plane: f32::Vec3,
+    pub focal_view: f32::Vec3,
     pub world_space_position: f32::Vec3,
     pub local_to_world_matrix: f32::Mat4,
     pub near_clip: f32,

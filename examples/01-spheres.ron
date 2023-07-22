@@ -2,9 +2,10 @@ Scene (
     camera: (
         lens: Perspective (
             fov: 50,
+            focal_distance: 10.5,
         ),
         transform: Transform (
-            position: (0.0, 2.0, 0.0),
+            position: (0.0, 2.0, -4.0),
             rotation: (8.0, 0.0, 0.0),
         ),
         clipping: Clipping (
@@ -130,7 +131,7 @@ Scene (
                 radius: 0.6,
             ),
             transform: Transform (
-                position: (1.8, -2.5, 7.6),
+                position: (1.8, -2.5, 3.6),
                 rotation: (8.0, 0.0, 0.0),
             ),
             material: Material (

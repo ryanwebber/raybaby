@@ -12,10 +12,11 @@ struct Globals {
     ambient_lighting_strength: f32,
     max_ray_bounces: u32,
     max_samples_per_pixel: u32,
+    focal_blur_strength: f32,
 }
 
 struct Camera {
-    focal_plane: vec3<f32>,
+    focal_view: vec3<f32>,
     world_space_position: vec3<f32>,
     local_to_world_matrix: mat4x4<f32>,
     near_clip: f32,
@@ -197,6 +198,13 @@ fn random_unit_vector(rs: RandomState) -> vec3<f32>
     return normalize(vec3<f32>(x, y, z));
 }
 
+fn random_point_in_unit_circle(rs: RandomState) -> vec2<f32>
+{
+    let angle = random_value(rs) * 2.0 * 3.14159;
+    let point_on_circle = vec2<f32>(cos(angle), sin(angle));
+    return point_on_circle * sqrt(random_value(rs));
+}
+
 // ============================= Entry Point ============================ */
 
 @group(0) @binding(0)
@@ -228,8 +236,8 @@ fn main(
         f32(pixel_coords.y) / f32(dimensions.y)
     );
 
-    let focus_point_local = vec3<f32>(uv - 0.5, 1.0) * globals.camera.focal_plane;
-    let focusPoint = globals.camera.local_to_world_matrix * vec4<f32>(focus_point_local, 1.0);
+    let focus_point_local = vec3<f32>(uv - 0.5, 1.0) * globals.camera.focal_view;
+    let focus_point = globals.camera.local_to_world_matrix * vec4<f32>(focus_point_local, 1.0);
     let cam_right = globals.camera.local_to_world_matrix[0].xyz;
     let cam_up = globals.camera.local_to_world_matrix[1].xyz;
 
@@ -238,11 +246,16 @@ fn main(
     var ray: Ray;
     var color = vec3<f32>(0.0);
     for (var i: u32 = 0u; i < num_samples; i++) {
-        ray.origin = globals.camera.world_space_position;
-        ray.direction = normalize(focusPoint.xyz - ray.origin);
+        let ray_origin_jitter_offset = random_point_in_unit_circle(&rs) * globals.focal_blur_strength / f32(dimensions.x);
+        ray.origin =  globals.camera.world_space_position + cam_right * ray_origin_jitter_offset.x + cam_up * ray_origin_jitter_offset.y;
+        
+        let ray_target_jitter_offset = vec2<f32>(0.0); // This could be used for anti-aliasing
+        let ray_focal_point = focus_point.xyz + cam_right * ray_target_jitter_offset.x + cam_up * ray_target_jitter_offset.y;
+        ray.direction = normalize(ray_focal_point - ray.origin);
+
         color += trace(ray, &rs);
     }
-    
+
     color /= max(f32(num_samples), 1.0);
 
     let weight = 1.0 / (f32(globals.frame) / 4.0 + 1.0);

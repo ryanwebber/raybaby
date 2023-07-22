@@ -26,6 +26,7 @@ async fn run() {
             ambient_lighting_strength,
             max_ray_bounces_per_ray,
             max_samples_per_pixel,
+            focal_blur_strength,
         } => {
             let scene = {
                 let scene = fs::read_to_string(scene.as_path()).expect(&format!(
@@ -44,6 +45,7 @@ async fn run() {
                 skybox_color: skybox_color.into(),
                 ambient_lighting_color: ambient_lighting_color.into(),
                 ambient_lighting_strength,
+                focal_blur_strength,
             };
 
             let event_loop = EventLoop::new();
