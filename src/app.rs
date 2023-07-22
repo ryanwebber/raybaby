@@ -47,7 +47,8 @@ pub struct State {
     size: winit::dpi::PhysicalSize<u32>,
     globals: storage::Globals,
     pipelines: Pipelines,
-    pipeline_data: PipelineData,
+    compute_data: ComputeData,
+    render_data: RenderData,
 }
 
 pub struct Pipelines {
@@ -55,12 +56,18 @@ pub struct Pipelines {
     render: RenderPipeline,
 }
 
-pub struct PipelineData {
+pub struct RenderData {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+}
+
+pub struct ComputeData {
     globals_buffer: wgpu::Buffer,
     materials_buffer: wgpu::Buffer,
     spheres_buffer: wgpu::Buffer,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    mesh_buffer: wgpu::Buffer,
     render_texture: wgpu::TextureView,
 }
 
@@ -108,28 +115,14 @@ impl State {
             }
         };
 
-        let spheres = scene
-            .objects
-            .iter()
-            .enumerate()
-            .filter_map(|(i, object)| match object.surface {
-                scene::Surface::Sphere { radius } => Some(storage::Sphere {
-                    position: object.transform.position,
-                    radius,
-                    material_id: i as u32,
-                }),
-            })
-            .collect::<Vec<_>>();
+        let scene_buffers = {
+            let mut builder = SceneBufferBuilder::new();
+            for obj in &scene.objects {
+                builder.push(obj);
+            }
 
-        let materials = scene
-            .objects
-            .iter()
-            .map(|object| storage::Material {
-                color: object.material.color,
-                luminosity: object.material.luminosity,
-                smoothness: object.material.smoothness,
-            })
-            .collect::<Vec<_>>();
+            builder
+        };
 
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -189,7 +182,7 @@ impl State {
             render: RenderPipeline::new(&device, surface_format),
         };
 
-        let pipeline_data = PipelineData {
+        let render_data = RenderData {
             vertex_buffer: {
                 let bytes = bytemuck::cast_slice(QUAD_VERTICIES);
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -206,6 +199,9 @@ impl State {
                     usage: wgpu::BufferUsages::INDEX,
                 })
             },
+        };
+
+        let compute_data = ComputeData {
             globals_buffer: {
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Globals buffer"),
@@ -216,14 +212,35 @@ impl State {
             materials_buffer: {
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Materials buffer"),
-                    contents: &storage::Buffer(&materials).into_bytes(),
+                    contents: &storage::Buffer(&scene_buffers.materials).into_bytes(),
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
                 })
             },
             spheres_buffer: {
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Spheres buffer"),
-                    contents: &storage::Buffer(&spheres).into_bytes(),
+                    contents: &storage::Buffer(&scene_buffers.spheres).into_bytes(),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+                })
+            },
+            vertex_buffer: {
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex buffer"),
+                    contents: &storage::Buffer(&scene_buffers.vertices).into_bytes(),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+                })
+            },
+            index_buffer: {
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index buffer"),
+                    contents: &storage::Buffer(&scene_buffers.indices).into_bytes(),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+                })
+            },
+            mesh_buffer: {
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Mesh buffer"),
+                    contents: &storage::Buffer(&scene_buffers.meshes).into_bytes(),
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
                 })
             },
@@ -255,7 +272,8 @@ impl State {
             size,
             globals,
             pipelines,
-            pipeline_data,
+            render_data,
+            compute_data,
         }
     }
 
@@ -310,7 +328,7 @@ impl State {
             encoder.copy_buffer_to_buffer(
                 &globals_buffer,
                 0,
-                &self.pipeline_data.globals_buffer,
+                &self.compute_data.globals_buffer,
                 0,
                 globals_data.len() as wgpu::BufferAddress,
             );
@@ -324,21 +342,33 @@ impl State {
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: self.pipeline_data.globals_buffer.as_entire_binding(),
+                        resource: self.compute_data.globals_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
                         resource: wgpu::BindingResource::TextureView(
-                            &self.pipeline_data.render_texture,
+                            &self.compute_data.render_texture,
                         ),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: self.pipeline_data.materials_buffer.as_entire_binding(),
+                        resource: self.compute_data.materials_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
-                        resource: self.pipeline_data.spheres_buffer.as_entire_binding(),
+                        resource: self.compute_data.spheres_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: self.compute_data.vertex_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: self.compute_data.index_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: self.compute_data.mesh_buffer.as_entire_binding(),
                     },
                 ],
             });
@@ -361,9 +391,7 @@ impl State {
                 layout: &self.pipelines.render.bind_group_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(
-                        &self.pipeline_data.render_texture,
-                    ),
+                    resource: wgpu::BindingResource::TextureView(&self.compute_data.render_texture),
                 }],
             });
 
@@ -391,9 +419,9 @@ impl State {
 
                 render_pass.set_pipeline(&self.pipelines.render.pipeline);
                 render_pass.set_bind_group(0, &bind_group, &[]);
-                render_pass.set_vertex_buffer(0, self.pipeline_data.vertex_buffer.slice(..));
+                render_pass.set_vertex_buffer(0, self.render_data.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(
-                    self.pipeline_data.index_buffer.slice(..),
+                    self.render_data.index_buffer.slice(..),
                     wgpu::IndexFormat::Uint32,
                 );
 
@@ -406,5 +434,82 @@ impl State {
         output.present();
 
         Ok(())
+    }
+}
+
+struct SceneBufferBuilder {
+    indices: Vec<u32>,
+    vertices: Vec<glam::f32::Vec3>,
+    meshes: Vec<storage::Mesh>,
+    spheres: Vec<storage::Sphere>,
+    materials: Vec<storage::Material>,
+}
+
+impl SceneBufferBuilder {
+    fn new() -> Self {
+        Self {
+            indices: Vec::new(),
+            vertices: Vec::new(),
+            meshes: Vec::new(),
+            spheres: Vec::new(),
+            materials: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, obj: &scene::Object) -> &mut Self {
+        let mat_index = self.materials.len();
+        self.materials.push(storage::Material {
+            color: obj.material.color,
+            luminosity: obj.material.luminosity,
+            smoothness: obj.material.smoothness,
+        });
+
+        match &obj.surface {
+            scene::Surface::Sphere { radius } => {
+                self.spheres.push(storage::Sphere {
+                    position: obj.transform.position,
+                    radius: (*radius) * f32::max(obj.transform.scale.x, obj.transform.scale.y),
+                    material_id: mat_index as u32,
+                });
+            }
+            scene::Surface::MeshData { vertices, indices } => {
+                let index_offset = self.vertices.len() as u32;
+                let affine_transform = glam::f32::Affine3A::from_scale_rotation_translation(
+                    obj.transform.scale,
+                    glam::Quat::from_euler(
+                        glam::EulerRot::XYZ,
+                        obj.transform.rotation.x.to_radians(),
+                        obj.transform.rotation.y.to_radians(),
+                        obj.transform.rotation.z.to_radians(),
+                    ),
+                    obj.transform.position,
+                );
+
+                self.vertices.extend(
+                    vertices
+                        .into_iter()
+                        .map(|v| affine_transform.transform_point3(*v)),
+                );
+
+                self.indices
+                    .extend(indices.iter().map(|i| *i + index_offset).fold(
+                        Vec::with_capacity(indices.len() * 3),
+                        |mut acc, i| {
+                            acc.push(i.x);
+                            acc.push(i.y);
+                            acc.push(i.z);
+                            acc
+                        },
+                    ));
+
+                self.meshes.push(storage::Mesh {
+                    index_offset,
+                    triangle_count: indices.len() as u32,
+                    material_id: mat_index as u32,
+                });
+            }
+        }
+
+        self
     }
 }

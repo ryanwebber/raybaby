@@ -7,6 +7,7 @@ Scene (
         transform: Transform (
             position: (0.0, 2.0, -4.0),
             rotation: (8.0, 0.0, 0.0),
+            scale: (1.0, 1.0, 1.0),
         ),
         clipping: Clipping (
             near: 0.1,
@@ -20,7 +21,8 @@ Scene (
             ),
             transform: Transform (
                 position: (-100.0, 60.0, 120.0),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (1.0, 1.0, 0.8, 1.0),
@@ -34,7 +36,8 @@ Scene (
             ),
             transform: Transform (
                 position: (2.0, -53.0, 12.0),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.3, 0.1, 0.5, 1.0),
@@ -48,7 +51,8 @@ Scene (
             ),
             transform: Transform (
                 position: (-1.0, -2.0, 10.0),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.95, 0.1, 0.1, 1.0),
@@ -62,7 +66,8 @@ Scene (
             ),
             transform: Transform (
                 position: (3.6, -1.0, 12.0),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.1, 0.7, 0.5, 1.0),
@@ -76,7 +81,8 @@ Scene (
             ),
             transform: Transform (
                 position: (-2.4, -2.85, 9.5),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.95, 0.8, 0.1, 1.0),
@@ -90,7 +96,8 @@ Scene (
             ),
             transform: Transform (
                 position: (0.8, -2.1, 11.3),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.95, 0.95, 0.95, 1.0),
@@ -105,6 +112,7 @@ Scene (
             transform: Transform (
                 position: (-4.6, -2.28, 10),
                 rotation: (8.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.05, 0.04, 0.05, 1.0),
@@ -118,7 +126,8 @@ Scene (
             ),
             transform: Transform (
                 position: (4.6, -1, 7.9),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.5, 0.5, 0.5, 1.0),
@@ -132,12 +141,51 @@ Scene (
             ),
             transform: Transform (
                 position: (1.8, -2.5, 3.6),
-                rotation: (8.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                scale: (1.0, 1.0, 1.0),
             ),
             material: Material (
                 color: (0.15, 0.37, 1.0, 1.0),
                 luminosity: 0.0,
                 smoothness: 0.0,
+            )
+        ),
+        Object (
+            surface: MeshData (
+                vertices: [
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.0, 1.0),
+                    (1.0, 0.0, 1.0),
+                    (1.0, 0.0, 0.0),
+                    (0.0, 1.0, 0.0),
+                    (0.0, 1.0, 1.0),
+                    (1.0, 1.0, 1.0),
+                    (1.0, 1.0, 0.0),
+                ],
+                indices: [
+                    (2, 1, 0),
+                    (3, 2, 0),
+                    (5, 6, 4),
+                    (6, 7, 4),
+                    (5, 4, 0),
+                    (1, 5, 0),
+                    (6, 5, 1),
+                    (2, 6, 1),
+                    (7, 6, 2),
+                    (3, 7, 2),
+                    (3, 0, 4),
+                    (7, 3, 4),
+                ]
+            ),
+            transform: Transform (
+                position: (-5.3, -1.5, 13.3),
+                rotation: (40.0, 12.0, -63.0),
+                scale: (1.5, 1.5, 1.5),
+            ),
+            material: Material (
+                color: (0.95, 0.45, 0.01, 1.0),
+                luminosity: 0.0,
+                smoothness: 0.5,
             )
         ),
     ]

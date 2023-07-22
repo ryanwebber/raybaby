@@ -99,6 +99,13 @@ pub struct Sphere {
     pub material_id: u32,
 }
 
+#[derive(ShaderType)]
+pub struct Mesh {
+    pub index_offset: u32,
+    pub triangle_count: u32,
+    pub material_id: u32,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Vertex {

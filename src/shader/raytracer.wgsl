@@ -49,6 +49,27 @@ struct SphereBuffer {
     spheres: array<Sphere>,
 }
 
+struct VertexBuffer {
+    count: u32,
+    vertices: array<vec3<f32>>,
+}
+
+struct IndexBuffer {
+    count: u32,
+    indices: array<u32>,
+}
+
+struct Mesh {
+    index_offset: u32,
+    triangle_count: u32,
+    material_id: u32,
+}
+
+struct MeshBuffer {
+    count: u32,
+    meshes: array<Mesh>,
+}
+
 struct Ray {
     origin: vec3<f32>,
     direction: vec3<f32>,
@@ -99,6 +120,40 @@ fn ray_sphere_intersection(ray: Ray, sphere: Sphere) -> HitInfo {
     return hit;
 }
 
+fn ray_triangle_intersection(ray: Ray, a_idx: u32, b_idx: u32, c_idx: u32) -> HitInfo {
+    // https://stackoverflow.com/a/42752998
+
+    let a = vertex_buffer.vertices[a_idx];
+    let b = vertex_buffer.vertices[b_idx];
+    let c = vertex_buffer.vertices[c_idx];
+
+    var hit: HitInfo;
+    hit.hit = false;
+
+    let edge_ab = b - a;
+    let edge_ac = c - a;
+    let normal_vector = cross(edge_ab, edge_ac);
+    let ao = ray.origin - a;
+    let dao = cross(ao, ray.direction);
+
+    let determinant = -dot(ray.direction, normal_vector);
+    let inv_det = 1.0 / determinant;
+
+    let dst = dot(ao, normal_vector) * inv_det;
+    let u = dot(edge_ac, dao) * inv_det;
+    let v = -dot(edge_ab, dao) * inv_det;
+    let w = 1.0 - u - v;
+
+    if (determinant >= 1E-6 && dst >= 0.0 && u >= 0.0 && v >= 0.0 && w >= 0.0) {
+        hit.hit = true;
+        hit.distance = dst;
+        hit.position = ray.origin + ray.direction * dst;
+        hit.normal = normalize(normal_vector);
+    }
+
+    return hit;
+}
+
 fn ray_world_collision(ray: Ray) -> HitInfo {
     var hit: HitInfo;
     hit.hit = false;
@@ -109,6 +164,27 @@ fn ray_world_collision(ray: Ray) -> HitInfo {
         let hit_info = ray_sphere_intersection(ray, (*spheres)[i]);
         if (hit_info.hit && hit_info.distance < hit.distance) {
             hit = hit_info;
+        }
+    }
+
+    let meshes = &mesh_buffer.meshes;
+    for (var i: u32 = 0u; i < mesh_buffer.count; i++) {
+        let mesh = (*meshes)[i];
+        let mesh_index_offset = mesh.index_offset;
+        let mesh_triangle_count = mesh.triangle_count;
+        let mesh_material_id = mesh.material_id;
+
+        for (var j: u32 = 0u; j < mesh_triangle_count; j++) {
+            let index_offset = mesh_index_offset + j * 3u;
+            let a_idx = index_buffer.indices[index_offset + 0u];
+            let b_idx = index_buffer.indices[index_offset + 1u];
+            let c_idx = index_buffer.indices[index_offset + 2u];
+
+            let hit_info = ray_triangle_intersection(ray, a_idx, b_idx, c_idx);
+            if (hit_info.hit && hit_info.distance < hit.distance) {
+                hit = hit_info;
+                hit.material_id = mesh_material_id;
+            }
         }
     }
 
@@ -218,6 +294,15 @@ var<storage, read> mat_buffer: MaterialBuffer;
 
 @group(0) @binding(3)
 var<storage, read> sphere_buffer: SphereBuffer;
+
+@group(0) @binding(4)
+var<storage, read> vertex_buffer: VertexBuffer;
+
+@group(0) @binding(5)
+var<storage, read> index_buffer: IndexBuffer;
+
+@group(0) @binding(6)
+var<storage, read> mesh_buffer: MeshBuffer;
 
 @compute
 @workgroup_size(1, 1, 1)

@@ -1,4 +1,4 @@
-use glam::f32;
+use glam::{f32, u32};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -34,13 +34,20 @@ pub struct Object {
 
 #[derive(Debug, Deserialize)]
 pub enum Surface {
-    Sphere { radius: f32 },
+    Sphere {
+        radius: f32,
+    },
+    MeshData {
+        vertices: Vec<f32::Vec3>,
+        indices: Vec<u32::UVec3>,
+    },
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Transform {
     pub position: f32::Vec3,
     pub rotation: f32::Vec3,
+    pub scale: f32::Vec3,
 }
 
 #[derive(Debug, Deserialize)]
