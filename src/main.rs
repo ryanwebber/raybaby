@@ -1,9 +1,9 @@
 mod app;
 mod cli;
 mod pipeline;
+mod scene;
 mod storage;
 mod traits;
-mod types;
 
 use std::{fs, time::Instant};
 
@@ -16,7 +16,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-async fn run() {
+async fn run() -> Result<(), String> {
     let args = cli::Cli::parse();
     match args.command {
         cli::Commands::Render {
@@ -29,12 +29,11 @@ async fn run() {
             focal_blur_strength,
         } => {
             let scene = {
-                let scene = fs::read_to_string(scene.as_path()).expect(&format!(
-                    "Unable to read file: {}",
-                    scene.as_path().display()
-                ));
+                let scene = fs::read_to_string(scene.as_path())
+                    .map_err(|_| format!("Unable to read file: {}", scene.as_path().display()))?;
 
-                ron::from_str::<types::Scene>(&scene).expect("Unable to parse scene")
+                ron::from_str::<scene::Scene>(&scene)
+                    .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?
             };
 
             let parameters = app::Parameters {
@@ -56,7 +55,7 @@ async fn run() {
                     height: 540,
                 })
                 .build(&event_loop)
-                .unwrap();
+                .map_err(|e| e.to_string())?;
 
             let mut state = State::new(&window, &scene, &parameters).await;
 
@@ -127,5 +126,11 @@ async fn run() {
 
 fn main() {
     env_logger::init();
-    pollster::block_on(run());
+    match pollster::block_on(run()) {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    }
 }

@@ -3,8 +3,8 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     pipeline::{compute::ComputePipeline, render::RenderPipeline},
+    scene,
     storage::{self, Storable},
-    types,
 };
 
 const QUAD_VERTICIES: &[storage::Vertex] = &[
@@ -65,13 +65,13 @@ pub struct PipelineData {
 }
 
 impl State {
-    pub async fn new(window: &Window, scene: &types::Scene, parameters: &Parameters) -> Self {
+    pub async fn new(window: &Window, scene: &scene::Scene, parameters: &Parameters) -> Self {
         let size = window.inner_size();
 
         let globals = {
             storage::Globals {
                 camera: match scene.camera.lens {
-                    types::Lens::Perspective {
+                    scene::Lens::Perspective {
                         fov,
                         focal_distance,
                     } => {
@@ -82,8 +82,6 @@ impl State {
 
                         let rotation = scene.camera.transform.rotation;
                         let position = scene.camera.transform.position;
-
-                        println!("Focal distance: {}", focal_distance);
 
                         storage::Camera {
                             focal_view: glam::f32::vec3(plane_width, plane_height, focal_distance),
@@ -115,7 +113,7 @@ impl State {
             .iter()
             .enumerate()
             .filter_map(|(i, object)| match object.surface {
-                types::Surface::Sphere { radius } => Some(storage::Sphere {
+                scene::Surface::Sphere { radius } => Some(storage::Sphere {
                     position: object.transform.position,
                     radius,
                     material_id: i as u32,
