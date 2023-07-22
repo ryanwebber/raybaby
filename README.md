@@ -1,6 +1,6 @@
 # Raybaby 
 
-A simple raytracing renderer using wgpu and wgsl. 
+A simple raytracing renderer using [wgpu](https://wgpu.rs) and [wgsl](https://www.w3.org/TR/WGSL/). 
 
 ## Usage
 
