@@ -49,6 +49,7 @@ pub struct State {
     pipelines: Pipelines,
     compute_data: ComputeData,
     render_data: RenderData,
+    gui_layer: GuiLayer,
 }
 
 pub struct Pipelines {
@@ -69,6 +70,14 @@ pub struct ComputeData {
     index_buffer: wgpu::Buffer,
     mesh_buffer: wgpu::Buffer,
     render_texture: wgpu::TextureView,
+}
+
+pub struct GuiLayer {
+    ctx: egui::Context,
+    state: egui_winit::State,
+    renderer: egui_wgpu::Renderer,
+    window: egui_demo_lib::DemoWindows,
+    enabled: bool,
 }
 
 impl State {
@@ -264,6 +273,21 @@ impl State {
             },
         };
 
+        let gui_layer = {
+            let ctx = egui::Context::default();
+            let state = egui_winit::State::new(window);
+            let renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
+            let demo_app = egui_demo_lib::DemoWindows::default();
+
+            GuiLayer {
+                ctx,
+                state,
+                renderer,
+                window: demo_app,
+                enabled: false,
+            }
+        };
+
         Self {
             surface,
             device,
@@ -274,6 +298,7 @@ impl State {
             pipelines,
             render_data,
             compute_data,
+            gui_layer,
         }
     }
 
@@ -294,15 +319,39 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, _: &WindowEvent) -> bool {
-        false
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
+        let mut handled = self
+            .gui_layer
+            .state
+            .on_event(&self.gui_layer.ctx, event)
+            .consumed;
+
+        match event {
+            WindowEvent::KeyboardInput {
+                input:
+                    winit::event::KeyboardInput {
+                        virtual_keycode: Some(winit::event::VirtualKeyCode::Space),
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                if *state == winit::event::ElementState::Released {
+                    self.gui_layer.enabled = !self.gui_layer.enabled;
+                    handled = true;
+                }
+            }
+            _ => {}
+        }
+
+        handled
     }
 
     pub fn update(&mut self) {
         self.globals.frame += 1;
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -313,6 +362,8 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        let mut cmd_buffer = Vec::new();
 
         // Copy frame data to GPU
         {
@@ -429,8 +480,74 @@ impl State {
             }
         }
 
+        // GUI Pass
+        if self.gui_layer.enabled {
+            let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+                size_in_pixels: [self.size.width as u32, self.size.height as u32],
+                pixels_per_point: self.gui_layer.state.pixels_per_point(),
+            };
+
+            let input = self.gui_layer.state.take_egui_input(window);
+            let output = self.gui_layer.ctx.run(input, |ctx| {
+                self.gui_layer.window.ui(ctx);
+            });
+
+            self.gui_layer.state.handle_platform_output(
+                window,
+                &self.gui_layer.ctx,
+                output.platform_output,
+            );
+
+            let texture_deltas = output.textures_delta;
+            let paint_jobs = self.gui_layer.ctx.tessellate(output.shapes);
+
+            for (id, image_delta) in &texture_deltas.set {
+                self.gui_layer
+                    .renderer
+                    .update_texture(&self.device, &self.queue, *id, image_delta);
+            }
+
+            for id in &texture_deltas.free {
+                self.gui_layer.renderer.free_texture(id);
+            }
+
+            let gui_commands = self.gui_layer.renderer.update_buffers(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                &paint_jobs,
+                &screen_descriptor,
+            );
+
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("GUI Pass"),
+                color_attachments: &[
+                    // This is what @location(0) in the fragment shader targets
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: true,
+                        },
+                    }),
+                ],
+                depth_stencil_attachment: None,
+            });
+
+            self.gui_layer
+                .renderer
+                .render(&mut render_pass, &paint_jobs, &screen_descriptor);
+
+            cmd_buffer.extend(gui_commands.into_iter());
+        }
+
         // submit will accept anything that implements IntoIter
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(
+            cmd_buffer
+                .into_iter()
+                .chain(std::iter::once(encoder.finish())),
+        );
         output.present();
 
         Ok(())

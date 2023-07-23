@@ -8,6 +8,10 @@ edition = "2021"
 [dependencies]
 bytemuck = { version = "1.13.1", features = ["derive"] }
 clap = { version="4.3.19", features = ["derive"] }
+egui = "0.22.0"
+egui-wgpu = { version = "0.22.0", features = ["winit"] }
+egui-winit = "0.22.0"
+egui_demo_lib = "0.22.0"
 encase = { version = "0.6.1", features = ["glam"] }
 env_logger = "0.10.0"
 glam = { version = "0.24.1", features = ["serde"] }

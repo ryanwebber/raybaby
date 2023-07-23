@@ -125,7 +125,7 @@ async fn run() -> Result<(), String> {
                     }
 
                     state.update();
-                    match state.render() {
+                    match state.render(&window) {
                         Ok(_) => {}
                         // Reconfigure the surface if lost
                         Err(wgpu::SurfaceError::Lost) => state.resize(state.size()),
