@@ -20,9 +20,27 @@ use winit::{
 async fn run() -> Result<(), String> {
     let args = cli::Cli::parse();
     match args.command {
-        cli::Commands::Render {
+        cli::Commands::Convert {
             scene,
             scene_format,
+        } => {
+            let scene = match scene_format {
+                cli::SceneFormat::Gltf => loader::gltf::load(scene)
+                    .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?,
+            };
+
+            let scene_str = {
+                let config = ron::ser::PrettyConfig::default().struct_names(true);
+                ron::ser::to_string_pretty(&scene, config)
+                    .map_err(|e| format!("Unable to serialize scene:\n  {}", e))?
+            };
+
+            println!("{}", &scene_str);
+
+            Ok(())
+        }
+        cli::Commands::Render {
+            scene,
             skybox_color,
             ambient_lighting_color,
             ambient_lighting_strength,
@@ -30,16 +48,12 @@ async fn run() -> Result<(), String> {
             max_samples_per_pixel,
             focal_blur_strength,
         } => {
-            let scene = match scene_format {
-                cli::SceneFormat::Ron => {
-                    let scene = fs::read_to_string(scene.as_path()).map_err(|_| {
-                        format!("Unable to read file: {}", scene.as_path().display())
-                    })?;
+            let scene = {
+                let scene = fs::read_to_string(scene.as_path())
+                    .map_err(|_| format!("Unable to read file: {}", scene.as_path().display()))?;
 
-                    ron::from_str::<scene::Scene>(&scene)
-                        .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?
-                }
-                cli::SceneFormat::Gltf => loader::gltf::load_scene(scene)?,
+                ron::from_str::<scene::Scene>(&scene)
+                    .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?
             };
 
             let parameters = app::Parameters {

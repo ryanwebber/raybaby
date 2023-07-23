@@ -10,20 +10,16 @@ pub struct Cli {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum SceneFormat {
-    Ron,
     Gltf,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Render a scene
     Render {
-        /// The scene to render
+        /// The .ron scene to render
         #[arg(long, required = true)]
         scene: PathBuf,
-
-        /// The type of scene file
-        #[arg(long, required = true)]
-        scene_format: SceneFormat,
 
         /// The skybox color
         #[arg(long, default_value_t = Color(0.0, 0.0, 0.0))]
@@ -48,6 +44,16 @@ pub enum Commands {
         /// The strength of blur for objects out of focus
         #[arg(long, default_value_t = 200.0)]
         focal_blur_strength: f32,
+    },
+    /// Convert a scene to the raybaby format
+    Convert {
+        /// The scene file to convert
+        #[arg(required = true)]
+        scene: PathBuf,
+
+        /// The type of the input scene file to convert
+        #[arg(long, required = true)]
+        scene_format: SceneFormat,
     },
 }
 

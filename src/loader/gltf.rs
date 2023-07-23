@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use gltf::{camera::Projection, Gltf};
+use gltf::camera::Projection;
 
 use crate::scene;
 
-pub fn load_scene(path: PathBuf) -> Result<scene::Scene, String> {
+pub fn load(path: PathBuf) -> Result<scene::Scene, String> {
     let (gltf, buffers, _) =
         ::gltf::import(path).map_err(|e| format!("Error while parsing GLTF file: {}", e))?;
 
@@ -102,18 +102,4 @@ fn flatten_transforms(node: gltf::Node, transform: glam::Mat4) -> Vec<(gltf::Nod
     }
 
     nodes
-}
-
-impl Into<scene::Transform> for glam::Mat4 {
-    fn into(self) -> scene::Transform {
-        let (scale, rotation, position) = self.to_scale_rotation_translation();
-        let rotation = rotation.to_euler(glam::EulerRot::XYZ);
-        let rotation = glam::f32::Vec3::new(rotation.0, rotation.1, rotation.2);
-
-        scene::Transform {
-            position,
-            rotation,
-            scale,
-        }
-    }
 }
