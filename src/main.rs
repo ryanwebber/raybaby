@@ -1,5 +1,6 @@
 mod app;
 mod cli;
+mod gui;
 mod loader;
 mod pipeline;
 mod scene;

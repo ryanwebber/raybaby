@@ -2,6 +2,7 @@ use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
+    gui,
     pipeline::{compute::ComputePipeline, render::RenderPipeline},
     scene,
     storage::{self, Storable},
@@ -76,7 +77,7 @@ pub struct GuiLayer {
     ctx: egui::Context,
     state: egui_winit::State,
     renderer: egui_wgpu::Renderer,
-    window: egui_demo_lib::DemoWindows,
+    window: gui::Window,
     enabled: bool,
 }
 
@@ -277,13 +278,12 @@ impl State {
             let ctx = egui::Context::default();
             let state = egui_winit::State::new(window);
             let renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
-            let demo_app = egui_demo_lib::DemoWindows::default();
 
             GuiLayer {
                 ctx,
                 state,
                 renderer,
-                window: demo_app,
+                window: gui::Window::new(),
                 enabled: false,
             }
         };
@@ -489,7 +489,7 @@ impl State {
 
             let input = self.gui_layer.state.take_egui_input(window);
             let output = self.gui_layer.ctx.run(input, |ctx| {
-                self.gui_layer.window.ui(ctx);
+                self.gui_layer.window.ui(ctx, &mut self.globals);
             });
 
             self.gui_layer.state.handle_platform_output(
