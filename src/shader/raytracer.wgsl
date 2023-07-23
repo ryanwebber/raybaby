@@ -168,13 +168,13 @@ fn ray_world_collision(ray: Ray) -> HitInfo {
     }
 
     let meshes = &mesh_buffer.meshes;
-    for (var i: u32 = 0u; i < mesh_buffer.count; i++) {
+    for (var i: u32 = 0u; i < min(mesh_buffer.count, 32u); i++) {
         let mesh = (*meshes)[i];
         let mesh_index_offset = mesh.index_offset;
         let mesh_triangle_count = mesh.triangle_count;
         let mesh_material_id = mesh.material_id;
 
-        for (var j: u32 = 0u; j < mesh_triangle_count; j++) {
+        for (var j: u32 = 0u; j < min(mesh_triangle_count, 256u); j++) {
             let index_offset = mesh_index_offset + j * 3u;
             let a_idx = index_buffer.indices[index_offset + 0u];
             let b_idx = index_buffer.indices[index_offset + 1u];

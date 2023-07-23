@@ -1,4 +1,4 @@
-use clap::{arg, Parser, Subcommand};
+use clap::{arg, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 /// A simple raytracing renderer
@@ -8,12 +8,22 @@ pub struct Cli {
     pub command: Commands,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum SceneFormat {
+    Ron,
+    Gltf,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Render {
-        /// The .ron scene file to render
+        /// The scene to render
         #[arg(long, required = true)]
         scene: PathBuf,
+
+        /// The type of scene file
+        #[arg(long, required = true)]
+        scene_format: SceneFormat,
 
         /// The skybox color
         #[arg(long, default_value_t = Color(0.0, 0.0, 0.0))]

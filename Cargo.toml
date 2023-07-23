@@ -11,6 +11,7 @@ clap = { version="4.3.19", features = ["derive"] }
 encase = { version = "0.6.1", features = ["glam"] }
 env_logger = "0.10.0"
 glam = { version = "0.24.1", features = ["serde"] }
+gltf = "1.2.0"
 nanorand = "0.7.0"
 pollster = "0.3.0"
 rand = "0.8.5"

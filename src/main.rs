@@ -1,5 +1,6 @@
 mod app;
 mod cli;
+mod loader;
 mod pipeline;
 mod scene;
 mod storage;
@@ -21,6 +22,7 @@ async fn run() -> Result<(), String> {
     match args.command {
         cli::Commands::Render {
             scene,
+            scene_format,
             skybox_color,
             ambient_lighting_color,
             ambient_lighting_strength,
@@ -28,12 +30,16 @@ async fn run() -> Result<(), String> {
             max_samples_per_pixel,
             focal_blur_strength,
         } => {
-            let scene = {
-                let scene = fs::read_to_string(scene.as_path())
-                    .map_err(|_| format!("Unable to read file: {}", scene.as_path().display()))?;
+            let scene = match scene_format {
+                cli::SceneFormat::Ron => {
+                    let scene = fs::read_to_string(scene.as_path()).map_err(|_| {
+                        format!("Unable to read file: {}", scene.as_path().display())
+                    })?;
 
-                ron::from_str::<scene::Scene>(&scene)
-                    .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?
+                    ron::from_str::<scene::Scene>(&scene)
+                        .map_err(|e| format!("Unable to parse scene file:\n  {}", e))?
+                }
+                cli::SceneFormat::Gltf => loader::gltf::load_scene(scene)?,
             };
 
             let parameters = app::Parameters {
