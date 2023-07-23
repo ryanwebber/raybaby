@@ -326,6 +326,11 @@ impl State {
             .on_event(&self.gui_layer.ctx, event)
             .consumed;
 
+        if handled {
+            // Reset the frame counter so we re-render everything
+            self.globals.frame = 0;
+        }
+
         match event {
             WindowEvent::KeyboardInput {
                 input:

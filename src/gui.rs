@@ -1,34 +1,55 @@
 use crate::storage::{Camera, Globals};
 
 pub struct Window {
+    info: InfoPane,
     camera: CameraPane,
+    environment: EnvironmentPane,
 }
 
 impl Window {
     pub fn new() -> Self {
-        Self { camera: CameraPane }
+        Self {
+            info: InfoPane,
+            camera: CameraPane,
+            environment: EnvironmentPane,
+        }
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, globals: &mut Globals) {
-        // Window
-        let mut scene_dirty = false;
-        egui::Window::new("Camera")
-            .default_width(600.0)
+        egui::Window::new("Info")
+            .min_width(900.0)
             .show(ctx, |ui: &mut egui::Ui| {
-                self.camera.ui(ui, &mut scene_dirty, &mut globals.camera);
+                self.info.ui(ui, globals);
             });
 
-        if scene_dirty {
-            // This will wipe the render texture and restart rendering
-            globals.frame = 0;
-        }
+        egui::Window::new("Camera").show(ctx, |ui: &mut egui::Ui| {
+            self.camera.ui(ui, &mut globals.camera);
+        });
+
+        egui::Window::new("Environment").show(ctx, |ui: &mut egui::Ui| {
+            self.environment.ui(ui, globals);
+        });
+    }
+}
+
+struct InfoPane;
+
+impl InfoPane {
+    fn ui(&mut self, ui: &mut egui::Ui, globals: &mut Globals) {
+        egui::Grid::new("info")
+            .striped(true)
+            .spacing([10.0, 10.0])
+            .show(ui, |ui| {
+                ui.label("Frame");
+                ui.add(egui::DragValue::new(&mut globals.frame).speed(1.0));
+            });
     }
 }
 
 struct CameraPane;
 
 impl CameraPane {
-    fn ui(&mut self, ui: &mut egui::Ui, scene_dirty: &mut bool, camera: &mut Camera) {
+    fn ui(&mut self, ui: &mut egui::Ui, camera: &mut Camera) {
         // Camera transform
         {
             let position = camera.world_space_position;
@@ -58,10 +79,59 @@ impl CameraPane {
                     glam::Quat::from_euler(glam::EulerRot::XYZ, x, y, z),
                     transform.position,
                 );
-
-                *scene_dirty = true;
             }
         }
+    }
+}
+
+struct EnvironmentPane;
+
+impl EnvironmentPane {
+    fn ui(&mut self, ui: &mut egui::Ui, globals: &mut Globals) {
+        egui::CollapsingHeader::new("Skybox")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::Grid::new("skybox")
+                    .striped(true)
+                    .spacing([10.0, 10.0])
+                    .show(ui, |ui| {
+                        let mut color = egui::Color32::from_rgba_premultiplied(
+                            (globals.skybox_color[0] * 255.0) as u8,
+                            (globals.skybox_color[1] * 255.0) as u8,
+                            (globals.skybox_color[2] * 255.0) as u8,
+                            255,
+                        );
+
+                        ui.label("Skybox color");
+                        ui.color_edit_button_srgba(&mut color);
+                    })
+            });
+
+        egui::CollapsingHeader::new("Lighting")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::Grid::new("lighting")
+                    .striped(true)
+                    .spacing([10.0, 10.0])
+                    .show(ui, |ui| {
+                        let mut color = egui::Color32::from_rgba_premultiplied(
+                            (globals.ambient_lighting_color[0] * 255.0) as u8,
+                            (globals.ambient_lighting_color[1] * 255.0) as u8,
+                            (globals.ambient_lighting_color[2] * 255.0) as u8,
+                            255,
+                        );
+
+                        ui.label("Ambient lighting color");
+                        ui.color_edit_button_srgba(&mut color);
+
+                        ui.end_row();
+
+                        ui.label("Ambient lighting strength");
+                        ui.add(
+                            egui::DragValue::new(&mut globals.ambient_lighting_strength).speed(0.1),
+                        );
+                    })
+            });
     }
 }
 
