@@ -40,7 +40,14 @@ pub struct Parameters {
     pub focal_blur_strength: f32,
 }
 
+pub struct Timing {
+    pub avs_fps: f32,
+    pub last_checkpoint: std::time::Instant,
+    pub frames_since_last_checkpoint: usize,
+}
+
 pub struct State {
+    timing: Timing,
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -284,11 +291,18 @@ impl State {
                 state,
                 renderer,
                 window: gui::Window::new(),
-                enabled: false,
+                enabled: true,
             }
         };
 
+        let timing = Timing {
+            avs_fps: 0.0,
+            last_checkpoint: std::time::Instant::now(),
+            frames_since_last_checkpoint: 0,
+        };
+
         Self {
+            timing,
             surface,
             device,
             queue,
@@ -357,6 +371,17 @@ impl State {
     }
 
     pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SurfaceError> {
+        self.timing.frames_since_last_checkpoint += 1;
+        if self.timing.last_checkpoint.elapsed().as_secs_f32() >= 0.25 {
+            self.timing.avs_fps = {
+                let frame_count = self.timing.frames_since_last_checkpoint;
+                (frame_count as f32) / self.timing.last_checkpoint.elapsed().as_secs_f32()
+            };
+
+            self.timing.frames_since_last_checkpoint = 0;
+            self.timing.last_checkpoint = std::time::Instant::now();
+        }
+
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -494,7 +519,9 @@ impl State {
 
             let input = self.gui_layer.state.take_egui_input(window);
             let output = self.gui_layer.ctx.run(input, |ctx| {
-                self.gui_layer.window.ui(ctx, &mut self.globals);
+                self.gui_layer
+                    .window
+                    .ui(ctx, &mut self.globals, &self.timing);
             });
 
             self.gui_layer.state.handle_platform_output(
